@@ -1,0 +1,24 @@
+{
+    "name": "web3.country",
+    "description": "web3.country NFT token",
+    "attributes": [
+        {
+            "trait_type": "Length",
+            "display_type": "number",
+            "value": 3
+        },
+        {
+            "trait_type": "Registration Date",
+            "display_type": "date",
+            "value": 1677585815000
+        },
+        {
+            "trait_type": "Expiration Date",
+            "display_type": "date",
+            "value": 1709142767000
+        }
+    ],
+    "name_length": 3,
+    "external_url": "https://twitter.com/web3",
+    "image": "https://storage.googleapis.com/test-5029b.appspot.com/nft-web3.country-1678230788600.png"
+}
