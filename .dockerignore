@@ -105,8 +105,6 @@
 **/keys
 **/dist
 
-**/keys.json
-
 **/package-lock.json
 **/yarn.lock
 fly.toml
