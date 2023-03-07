@@ -18,9 +18,9 @@ To set up the project, follow these steps:
 2.  Install dependencies with `npm install`
 3.  Create a `.env` file with the following environment variables:
 
-makefileCopy code
-
-`GOOGLE_CLOUD_STORAGE_BUCKET_NAME=your-bucket-name`
+``
+GOOGLE_CLOUD_STORAGE_BUCKET_NAME=your-bucket-name
+``
 
 4.  Update the `backgroundImagePath` variable in the `generate-nft-image` route to point to your background image
 5.  Update the `font` and `fontSize` variables in the `generate-nft-image` route to customize the text font and size
@@ -32,9 +32,9 @@ To use the API, start the server with `npm start`. The API will listen on port 3
 
 The API has a single route:
 
-vbnetCopy code
-
-`GET /generate-nft-image?text=your-text`
+``
+GET /generate-nft-image?text=your-text
+``
 
 Replace `your-text` with the text you want to overlay on the background image. The API will return a JSON object with a single property, `url`, which contains the public link to the uploaded image.
 
