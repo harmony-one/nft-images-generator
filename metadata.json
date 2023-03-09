@@ -1,14 +1,20 @@
 {
     "name": "web3.country",
     "description": "web3.country NFT token",
+    "external_url": "https://twitter.com/web3",
+    "image": "https://storage.googleapis.com/test-5029b.appspot.com/nft-web3.country-1678230788600.png",
     "attributes": [
         {
             "trait_type": "Length",
             "display_type": "number",
-            "value": 3
+            "value": 4
         },
         {
-            "trait_type": "Registration Date",
+            "trait_type": "Tier",
+            "value": "Super rare"
+        },
+        {
+            "trait_type": "Mint Date",
             "display_type": "date",
             "value": 1677585815000
         },
@@ -16,9 +22,31 @@
             "trait_type": "Expiration Date",
             "display_type": "date",
             "value": 1709142767000
+        },
+        {
+            "trait_type": "Renew Date",
+            "display_type": "date",
+            "value": 706550767000
+        },
+        {
+            "trait_type": "Transfer price (ONE)",
+            "display_type": "number",
+            "value": 10
+        },
+        {
+            "trait_type": "Sold price (ONE)",
+            "display_type": "number",
+            "value": 100
+        },
+        {
+            "trait_type": "Transfer price (Fiat)",
+            "display_type": "number",
+            "value": 1
+        },
+        {
+            "trait_type": "Sold price (Fiat)",
+            "display_type": "number",
+            "value": 10
         }
-    ],
-    "name_length": 3,
-    "external_url": "https://twitter.com/web3",
-    "image": "https://storage.googleapis.com/test-5029b.appspot.com/nft-web3.country-1678230788600.png"
+    ]
 }

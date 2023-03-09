@@ -35,14 +35,14 @@ app.get('/generate-nft-image', async (req, res) => {
     ctx.drawImage(backgroundImage, 0, 0, backgroundImage.width, backgroundImage.height);
 
     // Set the text font and size
-    const fontSize = text.length < 20 ? 50: 30;
+    const fontSize = text.length <= 20 ? 60: 40;
     const font = `bold ${fontSize}px Arial`;
 
     // Draw the text on the canvas
     ctx.font = font;
-    ctx.fillStyle = '#070e6d';
-    ctx.textAlign = 'center';
-    ctx.fillText(text, canvas.width / 2, canvas.height / 2 + + fontSize / 2);
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'right';
+    ctx.fillText(text, canvas.width - 50, canvas.height - 50);
 
     // Create a PNG buffer from the canvas data
     const buffer = canvas.toBuffer('image/png');
