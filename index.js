@@ -14,6 +14,22 @@ const storage = new Storage({
   keyFilename: './keys.json',
 });
 
+const getBackgroundByLength = (length) => {
+  if (length <= 3) {
+    return "./backgrounds/legendary.png";
+  }
+
+  if (length <= 6) {
+    return "./backgrounds/super_rare.png";
+  }
+
+  if (length <= 9) {
+    return "./backgrounds/rare.png";
+  }
+
+  return "./backgrounds/common.png";
+}
+
 // Define the route to handle the API request
 app.get('/generate-nft-image', async (req, res) => {
   try {
@@ -26,7 +42,9 @@ app.get('/generate-nft-image', async (req, res) => {
     }
 
     // Load the background image from the file system or URL
-    const backgroundImagePath = './background.png';
+    const domain = text.split(".country")[0];
+    const backgroundImagePath = getBackgroundByLength(domain.length);
+
     const backgroundImage = await loadImage(backgroundImagePath);
 
     // Create a new canvas and draw the background image on it
@@ -35,7 +53,7 @@ app.get('/generate-nft-image', async (req, res) => {
     ctx.drawImage(backgroundImage, 0, 0, backgroundImage.width, backgroundImage.height);
 
     // Set the text font and size
-    const fontSize = text.length <= 20 ? 60: 40;
+    const fontSize = text.length < 19 ? 60 : 40;
     const font = `bold ${fontSize}px Arial`;
 
     // Draw the text on the canvas
@@ -75,3 +93,8 @@ const port = process.env.PORT || 8080;
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
 });
+
+// "1-3 legendary.png"       
+// "4-6 super_rare.png"      
+// "7-9 rare.png"
+// "10+ common.png"          
