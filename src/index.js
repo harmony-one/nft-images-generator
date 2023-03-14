@@ -1,9 +1,12 @@
 require('./env');
 const express = require('express');
+const { resolve } = require("path");
 const app = express();
 const bodyParser = require('body-parser');
 const { Storage } = require('@google-cloud/storage');
-const { createCanvas, loadImage } = require('canvas');
+const Canvas = require('canvas');
+const { isArray } = require("lodash");
+const { getBackgroundByLength, splitTextToLines } = require('./helpers');
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
@@ -11,38 +14,62 @@ app.use(bodyParser.json());
 const GOOGLE_CLOUD_STORAGE_BUCKET_NAME = process.env.GOOGLE_CLOUD_STORAGE_BUCKET_NAME;
 
 const storage = new Storage({
-  keyFilename: './keys.json',
+  keyFilename: 'keys.json',
 });
+
+Canvas.registerFont(resolve("./fonts/Nunito-Bold.ttf"), { family: "Nunito" });
 
 // Define the route to handle the API request
 app.get('/generate-nft-image', async (req, res) => {
   try {
     // Extract the text from the request body
     // const { text } = req.body;
-    const text = req.query.text;
+    let text = req.query.text;
+
+    let fontSize = Number(req.query.maxFont) || 80;
+    const MIN_FONT_SIZE = Number(req.query.minFont) || 40;
 
     if (!text) {
       throw new Error('Text is missing in the request body');
     }
 
     // Load the background image from the file system or URL
-    const backgroundImagePath = './background.png';
-    const backgroundImage = await loadImage(backgroundImagePath);
+    const domain = text.split(".country")[0];
+    const backgroundImagePath = getBackgroundByLength(domain.length);
+
+    const backgroundImage = await Canvas.loadImage(backgroundImagePath);
 
     // Create a new canvas and draw the background image on it
-    const canvas = createCanvas(backgroundImage.width, backgroundImage.height);
+    const canvas = Canvas.createCanvas(backgroundImage.width, backgroundImage.height);
     const ctx = canvas.getContext('2d');
     ctx.drawImage(backgroundImage, 0, 0, backgroundImage.width, backgroundImage.height);
 
-    // Set the text font and size
-    const fontSize = text.length <= 20 ? 60: 40;
-    const font = `bold ${fontSize}px Arial`;
+    let textMetrcis;
+
+    do {
+      ctx.font = `bold ${fontSize}px Nunito`;
+
+      if (fontSize > MIN_FONT_SIZE) {
+        fontSize = fontSize - 5;
+      } else {
+        text = splitTextToLines(text, ctx, canvas.width - 200);
+      }
+
+      textMetrcis = ctx.measureText(isArray(text) ? text[0] : text);
+    } while (textMetrcis.width >= canvas.width - 100);
 
     // Draw the text on the canvas
-    ctx.font = font;
     ctx.fillStyle = 'white';
     ctx.textAlign = 'right';
-    ctx.fillText(text, canvas.width - 50, canvas.height - 50);
+
+    if (isArray(text)) {
+      text.reverse();
+      text.forEach((t, idx) => {
+        ctx.fillText(t, canvas.width - 50, canvas.height - 50 - textMetrcis.emHeightAscent * idx)
+      });
+    } else {
+      ctx.fillText(text, canvas.width - 50, canvas.height - 50);
+    }
 
     // Create a PNG buffer from the canvas data
     const buffer = canvas.toBuffer('image/png');
@@ -50,7 +77,7 @@ app.get('/generate-nft-image', async (req, res) => {
     // Upload the buffer to the Google Storage bucket
     const bucket = storage.bucket(GOOGLE_CLOUD_STORAGE_BUCKET_NAME);
     const timestamp = new Date().getTime();
-    const filename = `nft-${text}-${timestamp}.png`;
+    const filename = `nft-${req.query.text}-${timestamp}.png`;
     const file = bucket.file(filename);
     await new Promise((resolve, reject) => {
       const stream = file.createWriteStream({ resumable: false });
@@ -74,4 +101,4 @@ app.get('/generate-nft-image', async (req, res) => {
 const port = process.env.PORT || 8080;
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
-});
+});  
