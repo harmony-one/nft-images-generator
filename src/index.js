@@ -1,104 +1,158 @@
-require('./env');
-const express = require('express');
-const { resolve } = require("path");
-const app = express();
-const bodyParser = require('body-parser');
-const { Storage } = require('@google-cloud/storage');
-const Canvas = require('canvas');
-const { isArray } = require("lodash");
-const { getBackgroundByLength, splitTextToLines } = require('./helpers');
+require('./env')
+const express = require('express')
+const { resolve } = require('path')
+const app = express()
+const bodyParser = require('body-parser')
+const { Storage } = require('@google-cloud/storage')
+const Canvas = require('canvas')
+const { isArray } = require('lodash')
+const { getBackgroundByLength, splitTextToLines, getTier } = require('./helpers')
 
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }))
+app.use(bodyParser.json())
 
-const GOOGLE_CLOUD_STORAGE_BUCKET_NAME = process.env.GOOGLE_CLOUD_STORAGE_BUCKET_NAME;
+const GOOGLE_CLOUD_STORAGE_BUCKET_NAME_IMAGE = process.env.GOOGLE_CLOUD_STORAGE_BUCKET_NAME_IMAGE
+const GOOGLE_CLOUD_STORAGE_BUCKET_NAME_METADATA = process.env.GOOGLE_CLOUD_STORAGE_BUCKET_NAME_METADATA
 
 const storage = new Storage({
   keyFilename: 'keys.json',
-});
+})
 
-Canvas.registerFont(resolve("./fonts/Nunito-Bold.ttf"), { family: "Nunito" });
+Canvas.registerFont(resolve('./fonts/Nunito-Bold.ttf'), { family: 'Nunito' })
+
+const uploadFile = async (buffer, filename, bucketName = GOOGLE_CLOUD_STORAGE_BUCKET_NAME_IMAGE) => {
+  // Upload the buffer to the Google Storage bucket
+  const bucket = storage.bucket(bucketName)
+  const file = bucket.file(filename)
+  return new Promise((resolve, reject) => {
+    const stream = file.createWriteStream({ resumable: false })
+    stream.on('error', reject)
+    stream.on('finish', resolve)
+    stream.end(buffer)
+  })
+}
+
+const generateImage = async (text, maxFontSize = 80, minFontSize = 40) => {
+  let fontSize = Number(maxFontSize)
+  const fontSizeLowerBound = Number(minFontSize)
+
+  // Load the background image from the file system or URL
+  const name = text.split('.country')[0]
+  const backgroundImagePath = getBackgroundByLength(name.length)
+
+  const backgroundImage = await Canvas.loadImage(backgroundImagePath)
+
+  // Create a new canvas and draw the background image on it
+  const canvas = Canvas.createCanvas(backgroundImage.width, backgroundImage.height)
+  const ctx = canvas.getContext('2d')
+  ctx.drawImage(backgroundImage, 0, 0, backgroundImage.width, backgroundImage.height)
+
+  let textMetrcis
+
+  do {
+    ctx.font = `bold ${fontSize}px Nunito`
+
+    if (fontSize > fontSizeLowerBound) {
+      fontSize = fontSize - 5
+    } else {
+      text = splitTextToLines(text, ctx, canvas.width - 200)
+    }
+
+    textMetrcis = ctx.measureText(isArray(text) ? text[0] : text)
+  } while (textMetrcis.width >= canvas.width - 100)
+
+  // Draw the text on the canvas
+  ctx.fillStyle = 'white'
+  ctx.textAlign = 'right'
+
+  if (isArray(text)) {
+    text.reverse()
+    text.forEach((t, idx) => {
+      ctx.fillText(t, canvas.width - 50, canvas.height - 50 - textMetrcis.emHeightAscent * idx)
+    })
+  } else {
+    ctx.fillText(text, canvas.width - 50, canvas.height - 50)
+  }
+
+  // Create a PNG buffer from the canvas data
+  return canvas.toBuffer('image/png')
+}
+
+const generateMetadata = async (domain, image, registrationTimestamp, expirationTimestamp) => {
+  const name = domain.split('.country')[0]
+  const metadata = {
+    name: domain,
+    description: `${domain}, a domain connecting web2 and web3`,
+    image,
+    attributes: [
+      {
+        trait_type: 'Length',
+        display_type: 'number',
+        value: name.length
+      },
+      {
+        trait_type: 'Tier',
+        value: getTier(name.length)
+      },
+      {
+        trait_type: 'Registration Date',
+        display_type: 'date',
+        value: registrationTimestamp
+      },
+      {
+        trait_type: 'Expiration Date',
+        display_type: 'date',
+        value: expirationTimestamp
+      }
+    ]
+  }
+  const filename = `${domain}.json`
+  const buffer = Buffer.from(JSON.stringify(metadata))
+  await uploadFile(buffer, filename, GOOGLE_CLOUD_STORAGE_BUCKET_NAME_METADATA)
+  return `https://storage.googleapis.com/${GOOGLE_CLOUD_STORAGE_BUCKET_NAME_METADATA}/${filename}`
+}
 
 // Define the route to handle the API request
 app.get('/generate-nft-image', async (req, res) => {
   try {
     // Extract the text from the request body
-    // const { text } = req.body;
-    let text = req.query.text;
-
-    let fontSize = Number(req.query.maxFont) || 80;
-    const MIN_FONT_SIZE = Number(req.query.minFont) || 40;
-
+    const { text, maxFont, minFont } = req.query
     if (!text) {
-      throw new Error('Text is missing in the request body');
+      res.status(400).json({ error: 'Text is missing in the request body' })
+      return
     }
-
-    // Load the background image from the file system or URL
-    const domain = text.split(".country")[0];
-    const backgroundImagePath = getBackgroundByLength(domain.length);
-
-    const backgroundImage = await Canvas.loadImage(backgroundImagePath);
-
-    // Create a new canvas and draw the background image on it
-    const canvas = Canvas.createCanvas(backgroundImage.width, backgroundImage.height);
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(backgroundImage, 0, 0, backgroundImage.width, backgroundImage.height);
-
-    let textMetrcis;
-
-    do {
-      ctx.font = `bold ${fontSize}px Nunito`;
-
-      if (fontSize > MIN_FONT_SIZE) {
-        fontSize = fontSize - 5;
-      } else {
-        text = splitTextToLines(text, ctx, canvas.width - 200);
-      }
-
-      textMetrcis = ctx.measureText(isArray(text) ? text[0] : text);
-    } while (textMetrcis.width >= canvas.width - 100);
-
-    // Draw the text on the canvas
-    ctx.fillStyle = 'white';
-    ctx.textAlign = 'right';
-
-    if (isArray(text)) {
-      text.reverse();
-      text.forEach((t, idx) => {
-        ctx.fillText(t, canvas.width - 50, canvas.height - 50 - textMetrcis.emHeightAscent * idx)
-      });
-    } else {
-      ctx.fillText(text, canvas.width - 50, canvas.height - 50);
-    }
-
-    // Create a PNG buffer from the canvas data
-    const buffer = canvas.toBuffer('image/png');
-
-    // Upload the buffer to the Google Storage bucket
-    const bucket = storage.bucket(GOOGLE_CLOUD_STORAGE_BUCKET_NAME);
-    const timestamp = new Date().getTime();
-    const filename = `nft-${req.query.text}-${timestamp}.png`;
-    const file = bucket.file(filename);
-    await new Promise((resolve, reject) => {
-      const stream = file.createWriteStream({ resumable: false });
-      stream.on('error', reject);
-      stream.on('finish', resolve);
-      stream.end(buffer);
-    });
-
+    const buffer = await generateImage(text, maxFont, minFont)
+    const filename = `${text}.png`
+    await uploadFile(buffer, filename, GOOGLE_CLOUD_STORAGE_BUCKET_NAME_IMAGE)
     // Get the public link to the uploaded file
-    const url = `https://storage.googleapis.com/${GOOGLE_CLOUD_STORAGE_BUCKET_NAME}/${filename}`;
-
+    const url = `https://storage.googleapis.com/${GOOGLE_CLOUD_STORAGE_BUCKET_NAME_IMAGE}/${filename}`
     // Send the URL back as a response
-    res.json({ url });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+    res.json({ url })
+  } catch (ex) {
+    console.error(ex)
+    res.status(500).json({ error: ex.message })
   }
-});
+})
+
+app.get('/generate-nft-data', async (req, res) => {
+  try {
+    const { domain, registrationTs, expirationTs } = req.query
+    if (!domain || !registrationTs || !expirationTs) {
+      return res.status(400).json({ error: 'missing parameters', domain, registrationTs, expirationTs })
+    }
+    const buffer = await generateImage(domain)
+    await uploadFile(buffer, `${domain}.png`, GOOGLE_CLOUD_STORAGE_BUCKET_NAME_IMAGE)
+    const image = `https://storage.googleapis.com/${GOOGLE_CLOUD_STORAGE_BUCKET_NAME_IMAGE}/${domain}.png`
+    const metadata = await generateMetadata(domain, image, registrationTs, expirationTs)
+    res.json({ metadata, image })
+  } catch (ex) {
+    console.error(ex)
+    res.status(500).json({ error: ex.message })
+  }
+})
 
 // Start the server
-const port = process.env.PORT || 8080;
+const port = process.env.PORT || 8080
 app.listen(port, () => {
-  console.log(`Server listening on port ${port}`);
-});  
+  console.log(`Server listening on port ${port}`)
+})

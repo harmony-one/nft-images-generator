@@ -1,23 +1,23 @@
-'use strict';
+'use strict'
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('fs')
+const path = require('path')
 
-const appDirectory = fs.realpathSync(process.cwd());
-const resolveApp = relativePath => path.resolve(appDirectory, relativePath);
+const appDirectory = fs.realpathSync(process.cwd())
+const resolveApp = relativePath => path.resolve(appDirectory, relativePath)
 
-const NODE_ENV = process.env.NODE_ENV || 'testnet';
+const NODE_ENV = process.env.NODE_ENV || 'testnet'
 
 if (!process.env.NODE_ENV) {
-  console.warn('NODE ENV is not specified. Set to production');
+  console.warn('NODE ENV is not specified. Set to production')
 }
 
-var dotenvFiles = [
+const dotenvFiles = [
   `${resolveApp('.env')}`,
   `${resolveApp('.env')}.example`,
-].filter(Boolean);
+].filter(Boolean)
 
-console.log('dotenvFiles', dotenvFiles);
+console.log('dotenvFiles', dotenvFiles)
 
 dotenvFiles.forEach(dotenvFile => {
   if (fs.existsSync(dotenvFile)) {
@@ -25,6 +25,6 @@ dotenvFiles.forEach(dotenvFile => {
       require('dotenv').config({
         path: dotenvFile,
       })
-    );
+    )
   }
-});
+})
