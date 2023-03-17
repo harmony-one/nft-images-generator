@@ -106,8 +106,8 @@ const generateMetadata = async (domain, image, registrationTimestamp, expiration
       }
     ]
   }
-  const erc721Id = ethers.id(name)
-  const erc1155Id = ethers.namehash(domain)
+  const erc721Id = ethers.id(name).slice(2)
+  const erc1155Id = ethers.namehash(domain).slice(2)
   const buffer = Buffer.from(JSON.stringify(metadata))
   const erc721Filename = `erc721/${erc721Id}`
   const erc1155Filename = `erc1155/${erc1155Id}`
