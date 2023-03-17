@@ -110,7 +110,7 @@ const generateMetadata = async (domain, image, registrationTimestamp, expiration
   const erc1155Id = ethers.namehash(domain)
   const buffer = Buffer.from(JSON.stringify(metadata))
   const erc721Filename = `erc721/${erc721Id}`
-  const erc1155Filename = `erc721/${erc1155Id}`
+  const erc1155Filename = `erc1155/${erc1155Id}`
   await uploadFile(buffer, erc721Filename, GOOGLE_CLOUD_STORAGE_BUCKET_NAME_METADATA)
   await uploadFile(buffer, erc1155Filename, GOOGLE_CLOUD_STORAGE_BUCKET_NAME_METADATA)
   return {
