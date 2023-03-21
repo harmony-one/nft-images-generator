@@ -82,7 +82,7 @@ const generateMetadata = async (domain, image, registrationTimestamp, expiration
   const name = domain.split('.country')[0]
   const metadata = {
     name: domain,
-    description: `${domain}, a domain connecting web2 and web3`,
+    description: `${domain}, an NFT that links a traditional top-level domain (TLD) with a decentralized web3 name`,
     image,
     attributes: [
       {
