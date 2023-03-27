@@ -1,0 +1,13 @@
+[Unit]
+Description=1NS NFT Data Generator
+After=network.target
+
+[Service]
+Type=simple
+User=worker
+WorkingDirectory=/opt/nft-images-generator
+ExecStart=/usr/bin/node /opt/nft-images-generator/bin/run.js
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
