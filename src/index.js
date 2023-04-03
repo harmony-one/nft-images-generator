@@ -7,7 +7,7 @@ const { Storage } = require('@google-cloud/storage')
 const Canvas = require('canvas')
 const { isArray } = require('lodash')
 const { getBackgroundByLength, splitTextToLines, getTier } = require('./helpers')
-
+const ethers = require('ethers')
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())
 
@@ -106,10 +106,17 @@ const generateMetadata = async (domain, image, registrationTimestamp, expiration
       }
     ]
   }
-  const filename = `${domain}.json`
+  const erc721Id = BigInt(ethers.id(name)).toString()
+  const erc1155Id = BigInt(ethers.namehash(domain)).toString()
   const buffer = Buffer.from(JSON.stringify(metadata))
-  await uploadFile(buffer, filename, GOOGLE_CLOUD_STORAGE_BUCKET_NAME_METADATA)
-  return `https://storage.googleapis.com/${GOOGLE_CLOUD_STORAGE_BUCKET_NAME_METADATA}/${filename}`
+  const erc721Filename = `erc721/${erc721Id}`
+  const erc1155Filename = `erc1155/${erc1155Id}`
+  await uploadFile(buffer, erc721Filename, GOOGLE_CLOUD_STORAGE_BUCKET_NAME_METADATA)
+  await uploadFile(buffer, erc1155Filename, GOOGLE_CLOUD_STORAGE_BUCKET_NAME_METADATA)
+  return {
+    erc721Metadata: `https://storage.googleapis.com/${GOOGLE_CLOUD_STORAGE_BUCKET_NAME_METADATA}/${erc721Filename}`,
+    erc1155Metadata: `https://storage.googleapis.com/${GOOGLE_CLOUD_STORAGE_BUCKET_NAME_METADATA}/${erc1155Filename}`,
+  }
 }
 
 // Define the route to handle the API request
@@ -143,8 +150,8 @@ app.get('/generate-nft-data', async (req, res) => {
     const buffer = await generateImage(domain)
     await uploadFile(buffer, `${domain}.png`, GOOGLE_CLOUD_STORAGE_BUCKET_NAME_IMAGE)
     const image = `https://storage.googleapis.com/${GOOGLE_CLOUD_STORAGE_BUCKET_NAME_IMAGE}/${domain}.png`
-    const metadata = await generateMetadata(domain, image, registrationTs, expirationTs)
-    res.json({ metadata, image })
+    const { erc721Metadata, erc1155Metadata } = await generateMetadata(domain, image, registrationTs, expirationTs)
+    res.json({ metadata: { erc721Metadata, erc1155Metadata }, image })
   } catch (ex) {
     console.error(ex)
     res.status(500).json({ error: ex.message })
