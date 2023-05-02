@@ -133,6 +133,7 @@ const renewMetadata = async (domain, renewalTimestamp, expirationTimestamp) => {
     display_type: 'date',
     value: expirationTimestamp
   })
+  metadata.attributes = metadata.attributes.filter(e => e.trait_type !== 'Renewal Date')
   metadata.attributes.push({
     trait_type: 'Renewal Date',
     display_type: 'date',
