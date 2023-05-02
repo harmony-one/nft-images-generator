@@ -119,6 +119,34 @@ const generateMetadata = async (domain, image, registrationTimestamp, expiration
   }
 }
 
+const renewMetadata = async (domain, renewalTimestamp, expirationTimestamp) => {
+  const name = domain.split('.country')[0]
+  const erc721Id = BigInt(ethers.id(name)).toString()
+  const erc1155Id = BigInt(ethers.namehash(domain)).toString()
+  const erc721Filename = `erc721/${erc721Id}`
+  const erc1155Filename = `erc1155/${erc1155Id}`
+  const [b] = await storage.bucket(GOOGLE_CLOUD_STORAGE_BUCKET_NAME_METADATA).file(erc721Filename).download()
+  const metadata = JSON.parse(b.toString())
+  metadata.attributes = metadata.attributes.filter(e => e.trait_type !== 'Expiration Date')
+  metadata.attributes.push({
+    trait_type: 'Expiration Date',
+    display_type: 'date',
+    value: expirationTimestamp
+  })
+  metadata.attributes.push({
+    trait_type: 'Renewal Date',
+    display_type: 'date',
+    value: renewalTimestamp
+  })
+  const newBuffer = Buffer.from(JSON.stringify(metadata))
+  await uploadFile(newBuffer, erc721Filename, GOOGLE_CLOUD_STORAGE_BUCKET_NAME_METADATA)
+  await uploadFile(newBuffer, erc1155Filename, GOOGLE_CLOUD_STORAGE_BUCKET_NAME_METADATA)
+  return {
+    erc721Metadata: `https://storage.googleapis.com/${GOOGLE_CLOUD_STORAGE_BUCKET_NAME_METADATA}/${erc721Filename}`,
+    erc1155Metadata: `https://storage.googleapis.com/${GOOGLE_CLOUD_STORAGE_BUCKET_NAME_METADATA}/${erc1155Filename}`,
+  }
+}
+
 // Define the route to handle the API request
 app.get('/generate-nft-image', async (req, res) => {
   try {
@@ -152,6 +180,20 @@ app.get('/generate-nft-data', async (req, res) => {
     const image = `https://storage.googleapis.com/${GOOGLE_CLOUD_STORAGE_BUCKET_NAME_IMAGE}/${domain}.png`
     const { erc721Metadata, erc1155Metadata } = await generateMetadata(domain, image, registrationTs, expirationTs)
     res.json({ metadata: { erc721Metadata, erc1155Metadata }, image })
+  } catch (ex) {
+    console.error(ex)
+    res.status(500).json({ error: ex.message })
+  }
+})
+
+app.get('/renew', async (req, res) => {
+  try {
+    const { domain, renewalTs, expirationTs } = req.query
+    if (!domain || !expirationTs || !renewalTs) {
+      return res.status(400).json({ error: 'missing parameters', domain, renewalTs, expirationTs })
+    }
+    const { erc721Metadata, erc1155Metadata } = await renewMetadata(domain, renewalTs, expirationTs)
+    res.json({ metadata: { erc721Metadata, erc1155Metadata } })
   } catch (ex) {
     console.error(ex)
     res.status(500).json({ error: ex.message })
